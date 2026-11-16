@@ -1,9 +1,16 @@
-from fastapi import APIRouter, HTTPException, Header, Response, Cookie
+from fastapi import APIRouter, HTTPException, Header, Response, Cookie, Depends
 from typing import Optional, List, Literal
 from models.schemas import ClaimsResponse, CreateClaimResponse, CreateClaim, UpdateClaim
 from sample_records import claims
+from sqlalchemy.orm import Session
+from database import get_db
 
 router = APIRouter()
+
+
+@router.get("/test-db")
+def test_database(db: Session = Depends(get_db)):
+    return {"message": "Database session received successfully"}
 
 
 @router.get("", response_model=List[ClaimsResponse])
