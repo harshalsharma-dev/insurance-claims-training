@@ -20,7 +20,7 @@ class CreateClaim(BaseModel):
 class UpdateClaim(BaseModel):
     policy_number: str = Field(min_length=5, max_length=10)
     claim_type: str
-    status: Literal["Pending", "Approved", "Rejected"]
+    status: Literal["Submitted", "Under Review", "Approved", "Rejected", "Settled"]
     claim_amount: float = Field(gt=0, lt=100000)
     policyholder: PolicyholderDetails
     description: Optional[str] = None
@@ -49,6 +49,7 @@ class ClaimCreate(BaseModel):
     policy_number: str = Field(min_length=5, max_length=10)
     claim_type: str
     claim_amount: Decimal = Field(gt=0, lt=100000)
+    priority: Literal["Low", "Medium", "High"] = "Medium"
     description: Optional[str] = None
 
 
@@ -58,6 +59,7 @@ class ClaimOut(BaseModel):
     claim_type: str
     claim_amount: Decimal
     status: str
+    priority: str
     description: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -66,7 +68,8 @@ class ClaimOut(BaseModel):
 class ClaimUpdate(BaseModel):
     policy_number: str = Field(min_length=5, max_length=10)
     claim_type: str
-    status: Literal["Pending", "Approved", "Rejected"]
+    status: Literal["Submitted", "Under Review", "Approved", "Rejected", "Settled"]
+    priority: Literal["Low", "Medium", "High"]
     claim_amount: Decimal = Field(gt=0, lt=100000)
     description: Optional[str] = None
 
@@ -74,5 +77,8 @@ class ClaimUpdate(BaseModel):
 class ClaimPatch(BaseModel):
     claim_type: Optional[str] = None
     claim_amount: Optional[Decimal] = Field(default=None, gt=0, lt=100000)
-    status: Optional[Literal["Pending", "Approved", "Rejected"]] = None
+    status: Optional[
+        Literal["Submitted", "Under Review", "Approved", "Rejected", "Settled"]
+    ] = None
+    priority: Optional[Literal["Low", "Medium", "High"]] = None
     description: Optional[str] = None

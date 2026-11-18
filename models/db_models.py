@@ -49,7 +49,8 @@ class Claim(Base):
 
     claim_type = Column(String(30), nullable=False)
     claim_amount = Column(Numeric(12, 2), nullable=False)
-    status = Column(String(20), nullable=False, default="Pending")
+    status = Column(String(20), nullable=False, default="Submitted")
+    priority = Column(String(20), nullable=False, default="Medium")
     description = Column(String, nullable=True)
 
     created_at = Column(
