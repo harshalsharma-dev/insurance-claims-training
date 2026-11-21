@@ -5,11 +5,30 @@ from sqlalchemy import (
     ForeignKey,
     Numeric,
     DateTime,
+    Table,
     func,
 )
 from sqlalchemy.orm import relationship
 
 from database import Base
+
+# Association table: many users can have many policies
+user_policies = Table(
+    "user_policies",
+    Base.metadata,
+    Column(
+        "user_id",
+        Integer,
+        ForeignKey("users.user_id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "policy_id",
+        Integer,
+        ForeignKey("policies.policy_id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
 
 
 # User ORM Model
@@ -22,7 +41,16 @@ class User(Base):
     phone_number = Column(String(20), nullable=True)
     role = Column(String(30), nullable=False, default="claimant")
 
-    policies = relationship("Policy", back_populates="owner")
+    password_hash = Column(String(255), nullable=True)
+    refresh_token_hash = Column(String(255), nullable=True)
+
+    policies = relationship(
+        "Policy",
+        secondary=user_policies,
+        back_populates="users",
+    )
+
+    claims = relationship("Claim", back_populates="user")
 
 
 # Policy ORM Model
@@ -33,9 +61,12 @@ class Policy(Base):
     policy_number = Column(String(20), unique=True, nullable=False, index=True)
     policy_type = Column(String(30), nullable=False)
 
-    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    users = relationship(
+        "User",
+        secondary=user_policies,
+        back_populates="policies",
+    )
 
-    owner = relationship("User", back_populates="policies")
     claims = relationship("Claim", back_populates="policy")
 
 
@@ -45,7 +76,19 @@ class Claim(Base):
 
     claim_id = Column(Integer, primary_key=True, index=True)
 
-    policy_id = Column(Integer, ForeignKey("policies.policy_id"), nullable=False)
+    user_id = Column(
+        Integer,
+        ForeignKey("users.user_id"),
+        nullable=False,
+        index=True,
+    )
+
+    policy_id = Column(
+        Integer,
+        ForeignKey("policies.policy_id"),
+        nullable=False,
+        index=True,
+    )
 
     claim_type = Column(String(30), nullable=False)
     claim_amount = Column(Numeric(12, 2), nullable=False)
@@ -59,4 +102,5 @@ class Claim(Base):
         nullable=False,
     )
 
+    user = relationship("User", back_populates="claims")
     policy = relationship("Policy", back_populates="claims")

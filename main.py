@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from routers.claims import router as claims_router
+from routers.auth import router as auth_router
 
 app = FastAPI(
     title="Insurance Claims",
@@ -17,3 +18,5 @@ def home():
 
 
 app.include_router(claims_router, prefix="/claims", tags=["Claims"])
+
+app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
