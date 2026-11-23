@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Header, Query
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from jwt import InvalidTokenError
@@ -69,3 +69,42 @@ def require_role(required_role: str):
         return current_user
 
     return role_checker
+
+
+# Simple API key dependency
+def verify_api_key(api_key: str = Header(..., alias="X-API-Key")):
+    expected_api_key = "insurance-training-key"
+
+    if api_key != expected_api_key:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid API Key",
+        )
+
+    return api_key
+
+
+# Class-based API key dependencies
+class APIKeyChecker:
+    def __init__(self, expected_api_key: str):
+        self.expected_api_key = expected_api_key
+
+    def __call__(self, api_key: str = Header(..., alias="X-API-Key")):
+        if api_key != self.expected_api_key:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Invalid API Key",
+            )
+
+        return api_key
+
+
+# Reusable pagination dependency
+def pagination_params(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=100),
+):
+    return {
+        "skip": skip,
+        "limit": limit,
+    }

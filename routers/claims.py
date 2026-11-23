@@ -6,8 +6,14 @@ from database import get_db
 from models.db_models import Claim, Policy, User
 from models.schemas import ClaimCreate, ClaimOut, ClaimUpdate, ClaimPatch
 from utils.dependencies import get_current_user
+from utils.dependencies import (
+    verify_api_key,
+    APIKeyChecker,
+    pagination_params,
+)
 
 router = APIRouter()
+verify_api_key_class = APIKeyChecker("insurance-training-key")
 
 
 # Admins can access all claims.
@@ -40,8 +46,11 @@ def associate_policy_with_user(
         user.policies.append(policy)
 
 
-# Test database connection
-@router.get("/test-db")
+# Test database connection with API key dependency
+@router.get(
+    "/test-db",
+    dependencies=[Depends(verify_api_key_class)],
+)
 def test_database(db: Session = Depends(get_db)):
     return {"message": "Database session received successfully"}
 
@@ -79,13 +88,19 @@ def search_claims_by_type(
     q: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    pagination: dict = Depends(pagination_params),
 ):
     query = get_claims_query(db, current_user)
 
     if q:
         query = query.filter(Claim.claim_type.ilike(f"%{q}%"))
 
-    return query.all()
+    return (
+        query.order_by(Claim.claim_id)
+        .offset(pagination["skip"])
+        .limit(pagination["limit"])
+        .all()
+    )
 
 
 # Get all claims
@@ -93,8 +108,15 @@ def search_claims_by_type(
 def get_claims(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    pagination: dict = Depends(pagination_params),
 ):
-    return get_claims_query(db, current_user).all()
+    return (
+        get_claims_query(db, current_user)
+        .order_by(Claim.claim_id)
+        .offset(pagination["skip"])
+        .limit(pagination["limit"])
+        .all()
+    )
 
 
 # Create claim
@@ -153,7 +175,14 @@ def update_claim(
             detail=f"Claim with ID {claim_id} not found",
         )
 
-    # Find the requested predefined policy.
+    # Only admins can approve or reject claims
+    if current_user.role != "admin" and payload.status != existing_claim.status:
+        raise HTTPException(
+            status_code=403,
+            detail="Only admins can update claim status",
+        )
+
+    # Find the requested predefined policy
     policy = (
         db.query(Policy).filter(Policy.policy_number == payload.policy_number).first()
     )
@@ -200,6 +229,13 @@ def patch_claim(
         )
 
     update_data = payload.model_dump(exclude_unset=True)
+
+    # Only admins can approve or reject claims
+    if "status" in update_data and current_user.role != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Only admins can update claim status",
+        )
 
     for field, value in update_data.items():
         setattr(existing_claim, field, value)
