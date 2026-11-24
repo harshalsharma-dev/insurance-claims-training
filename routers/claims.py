@@ -1,4 +1,14 @@
-from fastapi import APIRouter, HTTPException, Header, Response, Cookie, Depends
+import time
+import asyncio
+from fastapi import (
+    APIRouter,
+    HTTPException,
+    Header,
+    Response,
+    Cookie,
+    Depends,
+    BackgroundTasks,
+)
 from typing import Optional, List
 from sqlalchemy.orm import Session
 
@@ -11,6 +21,7 @@ from utils.dependencies import (
     APIKeyChecker,
     pagination_params,
 )
+from utils.notifications import send_claim_notification
 
 router = APIRouter()
 verify_api_key_class = APIKeyChecker("insurance-training-key")
@@ -123,6 +134,7 @@ def get_claims(
 @router.post("", response_model=ClaimOut, status_code=201)
 def create_claim(
     payload: ClaimCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -153,6 +165,13 @@ def create_claim(
     db.add(new_claim)
     db.commit()
     db.refresh(new_claim)
+
+    # Schedule notification after successful claim creation.
+    background_tasks.add_task(
+        send_claim_notification,
+        current_user.email,
+        new_claim.claim_id,
+    )
 
     return new_claim
 
@@ -287,3 +306,25 @@ def get_claim_details(
         )
 
     return claim
+
+
+@router.get("/test/blocking")
+async def blocking_endpoint():
+    print("BLOCKING: Request started")
+
+    time.sleep(5)
+
+    print("BLOCKING: Request completed")
+
+    return {"message": "Blocking completed"}
+
+
+@router.get("/test/non-blocking")
+async def non_blocking_endpoint():
+    print("NON-BLOCKING: Request started")
+
+    await asyncio.sleep(5)
+
+    print("NON-BLOCKING: Request completed")
+
+    return {"message": "Non-blocking completed"}
