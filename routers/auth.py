@@ -1,6 +1,6 @@
 import time
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from jwt import InvalidTokenError
@@ -24,6 +24,7 @@ from utils.security import (
 from utils.dependencies import get_current_user, require_role, oauth2_scheme
 from utils.token_blocklist import block_token
 from redis.exceptions import RedisError
+from utils.notifications import send_welcome_notification
 
 router = APIRouter()
 
@@ -44,7 +45,11 @@ def admin_dashboard(current_user: User = Depends(require_role("admin"))):
     response_model=UserSignupResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def signup(user_data: UserSignup, db: Session = Depends(get_db)):
+def signup(
+    user_data: UserSignup,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     existing_user = db.query(User).filter(User.email == user_data.email).first()
 
     if existing_user:
@@ -66,6 +71,13 @@ def signup(user_data: UserSignup, db: Session = Depends(get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
+    # Schedule welcome notification after successful signup.
+    background_tasks.add_task(
+        send_welcome_notification,
+        new_user.email,
+        new_user.name,
+    )
 
     return new_user
 
