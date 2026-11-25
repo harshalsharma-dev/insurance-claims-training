@@ -28,7 +28,8 @@ def test_claimant_cannot_access_admin_endpoint(authenticated_client):
 
 def test_signup_success(client, monkeypatch):
     monkeypatch.setattr(
-        "routers.auth.send_welcome_notification",
+        # "routers.auth.send_welcome_notification",
+        "routers.auth.send_welcome_notification.delay",
         lambda *args, **kwargs: None,
     )
 

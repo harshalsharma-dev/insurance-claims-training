@@ -1,6 +1,6 @@
 import time
 
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from jwt import InvalidTokenError
@@ -25,6 +25,8 @@ from utils.dependencies import get_current_user, require_role, oauth2_scheme
 from utils.token_blocklist import block_token
 from redis.exceptions import RedisError
 from utils.notifications import send_welcome_notification
+
+from utils.rate_limiter import check_login_rate_limit
 
 router = APIRouter()
 
@@ -73,8 +75,14 @@ def signup(
     db.refresh(new_user)
 
     # Schedule welcome notification after successful signup.
-    background_tasks.add_task(
-        send_welcome_notification,
+    # background_tasks.add_task(
+    #     send_welcome_notification,
+    #     new_user.email,
+    #     new_user.name,
+    # )
+
+    # Send welcome notification through celery
+    send_welcome_notification.delay(
         new_user.email,
         new_user.name,
     )
@@ -85,9 +93,30 @@ def signup(
 # User Login
 @router.post("/login", response_model=Token)
 def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
+
+    # Apply rate limiting based on client IP
+    client_ip = request.client.host if request.client else "unknown"
+
+    try:
+        allowed, retry_after = check_login_rate_limit(client_ip)
+
+    except RedisError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Login service temporarily unavailable",
+        )
+
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many login attempts. Try again later.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
     user = db.query(User).filter(User.email == form_data.username).first()
 
     if (

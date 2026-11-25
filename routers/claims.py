@@ -8,6 +8,7 @@ from fastapi import (
     Cookie,
     Depends,
     BackgroundTasks,
+    Request,
 )
 from typing import Optional, List
 from sqlalchemy.orm import Session
@@ -22,6 +23,16 @@ from utils.dependencies import (
     pagination_params,
 )
 from utils.notifications import send_claim_notification
+
+from redis.exceptions import RedisError
+
+from utils.cache import (
+    get_claims_cache_key,
+    get_cached_claims,
+    set_cached_claims,
+    invalidate_claims_cache,
+)
+from utils.rate_limiter import check_token_bucket
 
 router = APIRouter()
 verify_api_key_class = APIKeyChecker("insurance-training-key")
@@ -55,6 +66,16 @@ def associate_policy_with_user(
 
     if not existing_association:
         user.policies.append(policy)
+
+
+# Invalidate cached claims safely
+def clear_claims_cache():
+    try:
+        invalidate_claims_cache()
+    except RedisError:
+        # Database operation has already succeeded.
+        # Remaining cache entries will expire through TTL.
+        pass
 
 
 # Test database connection with API key dependency
@@ -96,11 +117,29 @@ def set_delete_cookies(
 # Search claims
 @router.get("/search", response_model=List[ClaimOut])
 def search_claims_by_type(
+    request: Request,
     q: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     pagination: dict = Depends(pagination_params),
 ):
+    client_ip = request.client.host if request.client else "unknown"
+
+    try:
+        allowed, remaining_tokens, retry_after = check_token_bucket(client_ip)
+    except RedisError:
+        raise HTTPException(
+            status_code=503,
+            detail="Rate limiting service temporarily unavailable",
+        )
+
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many search requests. Try again later.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
     query = get_claims_query(db, current_user)
 
     if q:
@@ -114,20 +153,55 @@ def search_claims_by_type(
     )
 
 
-# Get all claims
+# Get all claims with Redis caching
 @router.get("", response_model=List[ClaimOut])
 def get_claims(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     pagination: dict = Depends(pagination_params),
 ):
-    return (
+    # Generate a unique cache key
+    cache_key = get_claims_cache_key(
+        user_id=current_user.user_id,
+        role=current_user.role,
+        skip=pagination["skip"],
+        limit=pagination["limit"],
+    )
+
+    # Try retrieving claims from Redis
+    try:
+        cached_claims = get_cached_claims(cache_key)
+
+        if cached_claims is not None:
+            return cached_claims
+
+    except RedisError:
+        # If Redis is unavailable, continue with PostgreSQL
+        pass
+
+    # Cache miss: fetch claims from PostgreSQL
+    claims = (
         get_claims_query(db, current_user)
         .order_by(Claim.claim_id)
         .offset(pagination["skip"])
         .limit(pagination["limit"])
         .all()
     )
+
+    # Convert SQLAlchemy objects into JSON-compatible dictionaries
+    claims_data = [
+        ClaimOut.model_validate(claim).model_dump(mode="json") for claim in claims
+    ]
+
+    # Store the result in Redis
+    try:
+        set_cached_claims(cache_key, claims_data)
+
+    except RedisError:
+        # Database response is still available
+        pass
+
+    return claims_data
 
 
 # Create claim
@@ -165,6 +239,8 @@ def create_claim(
     db.add(new_claim)
     db.commit()
     db.refresh(new_claim)
+
+    clear_claims_cache()
 
     # Schedule notification after successful claim creation.
     background_tasks.add_task(
@@ -226,6 +302,8 @@ def update_claim(
     db.commit()
     db.refresh(existing_claim)
 
+    clear_claims_cache()
+
     return existing_claim
 
 
@@ -262,6 +340,8 @@ def patch_claim(
     db.commit()
     db.refresh(existing_claim)
 
+    clear_claims_cache()
+
     return existing_claim
 
 
@@ -284,6 +364,8 @@ def delete_claim(
 
     db.delete(existing_claim)
     db.commit()
+
+    clear_claims_cache()
 
     return Response(status_code=204)
 
