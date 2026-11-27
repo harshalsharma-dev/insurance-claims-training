@@ -1,20 +1,16 @@
-from passlib.context import CryptContext
-from datetime import datetime, timedelta, timezone
 import hashlib
-import jwt
-import os
 import uuid
-from dotenv import load_dotenv
+from datetime import UTC, datetime, timedelta
 
-load_dotenv()
+import jwt
+from passlib.context import CryptContext
+
+from config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-ALGORITHM = os.getenv("ALGORITHM", "HS256")
-
-if not SECRET_KEY:
-    raise RuntimeError("JWT_SECRET_KEY is missing from .env file.")
+SECRET_KEY = settings.jwt_secret_key
+ALGORITHM = settings.jwt_algorithm
 
 
 # Password hashing
@@ -31,7 +27,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
 
-    expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    expire = datetime.now(UTC) + timedelta(minutes=15)
 
     to_encode.update({"exp": expire, "type": "access", "jti": str(uuid.uuid4())})
 
@@ -42,7 +38,7 @@ def create_access_token(data: dict) -> str:
 def create_refresh_token(data: dict) -> str:
     to_encode = data.copy()
 
-    expire = datetime.now(timezone.utc) + timedelta(days=7)
+    expire = datetime.now(UTC) + timedelta(days=7)
 
     to_encode.update({"exp": expire, "type": "refresh"})
 

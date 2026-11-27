@@ -1,20 +1,21 @@
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
-from typing import Optional, Literal
 from decimal import Decimal
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 # Claim creation
 class CreateClaim(BaseModel):
     policy_number: str = Field(min_length=5, max_length=10)
     claim_amount: Decimal = Field(gt=0, lt=100000)
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class ClaimCreate(BaseModel):
     policy_number: str = Field(min_length=5, max_length=10)
     claim_amount: Decimal = Field(gt=0, lt=100000)
     priority: Literal["Low", "Medium", "High"] = "Medium"
-    description: Optional[str] = None
+    description: str | None = None
 
 
 # Full claim update
@@ -22,7 +23,7 @@ class UpdateClaim(BaseModel):
     policy_number: str = Field(min_length=5, max_length=10)
     status: Literal["Submitted", "Under Review", "Approved", "Rejected", "Settled"]
     claim_amount: Decimal = Field(gt=0, lt=100000)
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class ClaimUpdate(BaseModel):
@@ -30,17 +31,15 @@ class ClaimUpdate(BaseModel):
     status: Literal["Submitted", "Under Review", "Approved", "Rejected", "Settled"]
     priority: Literal["Low", "Medium", "High"]
     claim_amount: Decimal = Field(gt=0, lt=100000)
-    description: Optional[str] = None
+    description: str | None = None
 
 
 # Partial claim update
 class ClaimPatch(BaseModel):
-    claim_amount: Optional[Decimal] = Field(default=None, gt=0, lt=100000)
-    status: Optional[
-        Literal["Submitted", "Under Review", "Approved", "Rejected", "Settled"]
-    ] = None
-    priority: Optional[Literal["Low", "Medium", "High"]] = None
-    description: Optional[str] = None
+    claim_amount: Decimal | None = Field(default=None, gt=0, lt=100000)
+    status: Literal["Submitted", "Under Review", "Approved", "Rejected", "Settled"] | None = None
+    priority: Literal["Low", "Medium", "High"] | None = None
+    description: str | None = None
 
 
 # Claim responses
@@ -71,7 +70,7 @@ class ClaimOut(BaseModel):
     claim_amount: Decimal
     status: str
     priority: str
-    description: Optional[str] = None
+    description: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -80,7 +79,7 @@ class ClaimOut(BaseModel):
 class UserSignup(BaseModel):
     name: str
     email: EmailStr
-    phone_number: Optional[str] = None
+    phone_number: str | None = None
     password: str = Field(min_length=8)
 
 
@@ -88,7 +87,7 @@ class UserSignupResponse(BaseModel):
     user_id: int
     name: str
     email: EmailStr
-    phone_number: Optional[str]
+    phone_number: str | None
     role: str
 
 

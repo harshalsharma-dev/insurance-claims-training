@@ -6,16 +6,17 @@ Create Date: 2026-11-21 06:29:03.514834
 
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
+
+import sqlalchemy as sa
 
 from alembic import op
-import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "2a60a8c98968"
-down_revision: Union[str, Sequence[str], None] = "64492906136c"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = "64492906136c"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 from passlib.context import CryptContext

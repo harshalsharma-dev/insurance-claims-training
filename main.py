@@ -1,10 +1,11 @@
-import time
 import logging
+import time
 
 from fastapi import FastAPI
-from routers.claims import router as claims_router
-from routers.auth import router as auth_router
 from fastapi.middleware.cors import CORSMiddleware
+
+from routers.auth import router as auth_router
+from routers.claims import router as claims_router
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -55,6 +56,11 @@ def home():
         "message": "Welcome to Insurance Claims",
         "supported_categories": ["Motor", "Health", "Property"],
     }
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
 
 
 app.include_router(claims_router, prefix="/claims", tags=["Claims"])

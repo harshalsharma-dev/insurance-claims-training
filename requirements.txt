@@ -16,6 +16,7 @@ cryptography==50.0.2
 dnspython==2.9.2
 email-validator==2.4.0
 fastapi==0.162.0
+gunicorn==27.0.1
 h11==0.16.0
 httpcore==1.0.9
 httpx==0.28.1
@@ -32,6 +33,7 @@ prompt_toolkit==3.0.53
 psycopg2-binary==2.9.13
 pycparser==3.12
 pydantic==2.14.2
+pydantic-settings==2.16.3
 pydantic_core==2.50.2
 Pygments==2.21.0
 PyJWT==2.15.1
@@ -40,6 +42,7 @@ python-dateutil==2.9.0.post0
 python-dotenv==1.2.4
 python-multipart==0.0.34
 redis==8.1.0
+ruff==0.17.6
 six==1.17.0
 SQLAlchemy==2.1.8
 starlette==1.10.0
@@ -47,5 +50,6 @@ typing-inspection==0.4.4
 typing_extensions==4.16.0
 tzlocal==5.4.5
 uvicorn==0.54.0
+uvicorn-worker==0.4.0
 vine==5.1.0
 wcwidth==0.9.5

@@ -1,10 +1,10 @@
 from sqlalchemy import (
     Column,
-    Integer,
-    String,
-    ForeignKey,
-    Numeric,
     DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
     Table,
     func,
 )

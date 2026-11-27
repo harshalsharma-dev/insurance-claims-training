@@ -1,9 +1,8 @@
-from fastapi import Depends, HTTPException, status, Header, Query
+from fastapi import Depends, Header, HTTPException, Query, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.orm import Session
 from jwt import InvalidTokenError
 from redis.exceptions import RedisError
-
+from sqlalchemy.orm import Session
 
 from database import get_db
 from models.db_models import User

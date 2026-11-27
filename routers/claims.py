@@ -1,37 +1,34 @@
-import time
 import asyncio
+import time
+
 from fastapi import (
     APIRouter,
-    HTTPException,
-    Header,
-    Response,
+    BackgroundTasks,
     Cookie,
     Depends,
-    BackgroundTasks,
+    Header,
+    HTTPException,
     Request,
+    Response,
 )
-from typing import Optional, List
+from redis.exceptions import RedisError
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models.db_models import Claim, Policy, User
-from models.schemas import ClaimCreate, ClaimOut, ClaimUpdate, ClaimPatch
-from utils.dependencies import get_current_user
+from models.schemas import ClaimCreate, ClaimOut, ClaimPatch, ClaimUpdate
+from utils.cache import (
+    get_cached_claims,
+    get_claims_cache_key,
+    invalidate_claims_cache,
+    set_cached_claims,
+)
 from utils.dependencies import (
-    verify_api_key,
     APIKeyChecker,
+    get_current_user,
     pagination_params,
 )
 from utils.notifications import send_claim_notification
-
-from redis.exceptions import RedisError
-
-from utils.cache import (
-    get_claims_cache_key,
-    get_cached_claims,
-    set_cached_claims,
-    invalidate_claims_cache,
-)
 from utils.rate_limiter import check_token_bucket
 
 router = APIRouter()
@@ -115,10 +112,10 @@ def set_delete_cookies(
 
 
 # Search claims
-@router.get("/search", response_model=List[ClaimOut])
+@router.get("/search", response_model=list[ClaimOut])
 def search_claims_by_type(
     request: Request,
-    q: Optional[str] = None,
+    q: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     pagination: dict = Depends(pagination_params),
@@ -126,7 +123,7 @@ def search_claims_by_type(
     client_ip = request.client.host if request.client else "unknown"
 
     try:
-        allowed, remaining_tokens, retry_after = check_token_bucket(client_ip)
+        allowed, _remaining_tokens, retry_after = check_token_bucket(client_ip)
     except RedisError:
         raise HTTPException(
             status_code=503,
@@ -154,7 +151,7 @@ def search_claims_by_type(
 
 
 # Get all claims with Redis caching
-@router.get("", response_model=List[ClaimOut])
+@router.get("", response_model=list[ClaimOut])
 def get_claims(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -394,7 +391,7 @@ def get_claim_details(
 async def blocking_endpoint():
     print("BLOCKING: Request started")
 
-    time.sleep(5)
+    time.sleep(5)  # noqa: ASYNC251
 
     print("BLOCKING: Request completed")
 

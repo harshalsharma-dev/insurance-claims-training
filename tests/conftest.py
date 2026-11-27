@@ -1,26 +1,23 @@
-import os
-
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
 
+from config import settings
 from database import Base, get_db
 from main import app
 
-from models.db_models import User
-from utils.security import hash_password, create_access_token
-
 # Import models so SQLAlchemy registers all tables in Base.metadata.
 from models import db_models  # noqa: F401
+from models.db_models import User
+from utils.security import create_access_token, hash_password
 
-# Read the test database URL from .env.
-TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
+# Read the test database URL from settings
+TEST_DATABASE_URL = settings.test_database_url
 
 if not TEST_DATABASE_URL:
     raise RuntimeError("TEST_DATABASE_URL is missing from your .env file.")
-
 # Safety check: never allow tests to run against the development database.
 database_name = make_url(TEST_DATABASE_URL).database
 

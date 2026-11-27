@@ -1,32 +1,31 @@
 import time
 
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
 from jwt import InvalidTokenError
+from redis.exceptions import RedisError
+from sqlalchemy.orm import Session
 
+from database import get_db
 from models.db_models import User
 from models.schemas import (
+    RefreshTokenRequest,
+    Token,
     UserSignup,
     UserSignupResponse,
-    Token,
-    RefreshTokenRequest,
 )
-from database import get_db
+from utils.dependencies import get_current_user, oauth2_scheme, require_role
+from utils.notifications import send_welcome_notification
+from utils.rate_limiter import check_login_rate_limit
 from utils.security import (
-    hash_password,
-    verify_password,
     create_access_token,
     create_refresh_token,
     decode_access_token,
+    hash_password,
     hash_refresh_token,
+    verify_password,
 )
-from utils.dependencies import get_current_user, require_role, oauth2_scheme
 from utils.token_blocklist import block_token
-from redis.exceptions import RedisError
-from utils.notifications import send_welcome_notification
-
-from utils.rate_limiter import check_login_rate_limit
 
 router = APIRouter()
 
