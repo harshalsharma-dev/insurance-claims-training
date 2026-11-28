@@ -17,6 +17,9 @@ COPY requirements.txt .
 # 6. Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Create directory for Prometheus multiprocess metrics
+RUN mkdir -p /tmp/prometheus-multiproc
+
 # 7. Copy application code
 COPY . .
 
@@ -24,4 +27,5 @@ COPY . .
 EXPOSE 8000
 
 # 9. Start Gunicorn with Uvicorn workers
-CMD ["gunicorn", "main:app", "--workers", "4", "--worker-class", "uvicorn_worker.UvicornWorker", "--bind", "0.0.0.0:8000"]
+
+CMD ["sh", "-c", "rm -f /tmp/prometheus-multiproc/* && exec gunicorn main:app --workers 4 --worker-class uvicorn_worker.UvicornWorker --bind 0.0.0.0:8000 --config gunicorn.conf.py"]

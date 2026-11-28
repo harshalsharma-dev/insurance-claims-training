@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import time
 
 from fastapi import (
@@ -30,6 +31,8 @@ from utils.dependencies import (
 )
 from utils.notifications import send_claim_notification
 from utils.rate_limiter import check_token_bucket
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 verify_api_key_class = APIKeyChecker("insurance-training-key")
@@ -389,21 +392,21 @@ def get_claim_details(
 
 @router.get("/test/blocking")
 async def blocking_endpoint():
-    print("BLOCKING: Request started")
+    logger.info("BLOCKING endpoint request started")
 
     time.sleep(5)  # noqa: ASYNC251
 
-    print("BLOCKING: Request completed")
+    logger.info("BLOCKING endpoint request completed")
 
     return {"message": "Blocking completed"}
 
 
 @router.get("/test/non-blocking")
 async def non_blocking_endpoint():
-    print("NON-BLOCKING: Request started")
+    logger.info("BLOCKING endpoint request started")
 
     await asyncio.sleep(5)
 
-    print("NON-BLOCKING: Request completed")
+    logger.info("NON-BLOCKING endpoint request completed")
 
     return {"message": "Non-blocking completed"}

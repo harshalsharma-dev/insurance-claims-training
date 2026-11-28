@@ -66,7 +66,12 @@ def test_signup_duplicate_email(authenticated_client, monkeypatch):
     assert response.json()["detail"] == "Email already registered"
 
 
-def test_login_success(client, db_session):
+def test_login_success(client, db_session, monkeypatch):
+    monkeypatch.setattr(
+        "routers.auth.check_login_rate_limit",
+        lambda client_ip: (True, 60),
+    )
+
     user = User(
         name="Login User",
         email="login@test.com",
@@ -95,7 +100,12 @@ def test_login_success(client, db_session):
     assert response_data["refresh_token"]
 
 
-def test_login_wrong_password(client, db_session):
+def test_login_wrong_password(client, db_session, monkeypatch):
+    monkeypatch.setattr(
+        "routers.auth.check_login_rate_limit",
+        lambda client_ip: (True, 60),
+    )
+
     user = User(
         name="Login User",
         email="wrongpass@test.com",

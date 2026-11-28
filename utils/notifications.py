@@ -4,12 +4,14 @@ import time
 
 from utils.celery_app import celery_app
 
-logger = logging.getLogger("uvicorn.error")
-logger.setLevel(logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 async def send_claim_notification(email: str, claim_id: int):
-    print("BACKGROUND TASK STARTED", flush=True)
+    logger.info(
+        "Claim notification started",
+        extra={"claim_id": claim_id},
+    )
 
     message = (
         f"Your insurance claim with ID {claim_id} "
@@ -19,40 +21,22 @@ async def send_claim_notification(email: str, claim_id: int):
 
     await asyncio.sleep(2)
 
-    logger.info("Claim notification sent to %s: %s", email, message)
-
-    print("BACKGROUND TASK COMPLETED", flush=True)
-
-
-# async def send_welcome_notification(email: str, name: str):
-#     message = (
-#         f"Hello {name}, welcome to Insurance Claims Management! "
-#         "Your account has been successfully created."
-#     )
-
-#     print("WELCOME NOTIFICATION STARTED", flush=True)
-
-#     # Simulate email processing delay
-#     await asyncio.sleep(2)
-
-#     logger.info("Welcome notification sent to %s: %s", email, message)
-
-#     print("WELCOME NOTIFICATION COMPLETED", flush=True)
+    logger.info(
+        "Claim notification completed: %s",
+        message,
+        extra={"claim_id": claim_id},
+    )
 
 
 @celery_app.task(name="send_welcome_notification")
 def send_welcome_notification(email: str, name: str):
+    logger.info("Welcome notification started")
+
     message = (
         f"Hello {name}, welcome to Insurance Claims Management! "
         "Your account has been successfully created."
     )
 
-    print("WELCOME NOTIFICATION STARTED", flush=True)
-
-    # Simulate email processing delay
-
     time.sleep(2)
 
-    logger.info("Welcome notification sent to %s: %s", email, message)
-
-    print("WELCOME NOTIFICATION COMPLETED", flush=True)
+    logger.info("Welcome notification completed: %s", message)

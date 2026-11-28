@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
 
     redis_url: str = "redis://localhost:6379/0"
+    sentry_dsn: str | None = None
 
 
 @lru_cache

@@ -33,6 +33,10 @@ services:
       - "8000:8000"
     env_file:
       - .env  
+    environment:
+      PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus-multiproc
+    tmpfs:
+      - /tmp/prometheus-multiproc  
     depends_on:
       db:
         condition: service_healthy
